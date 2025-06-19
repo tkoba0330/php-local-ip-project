@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Apache + PHP サーバー (ポート8080)
+  php-apache:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    container_name: php-apache-server
+    restart: unless-stopped
+    volumes:
+      - ./index.php:/var/www/html/index.php
+      - ./dashboard.php:/var/www/html/dashboard.php
+
+  # Nginx + PHP-FPM サーバー (ポート8081)
+  php-nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "8081:80"
+    container_name: php-nginx-server
+    restart: unless-stopped
+    volumes:
+      - ./index.php:/var/www/html/index.php
+      - ./dashboard.php:/var/www/html/dashboard.php
+      - ./nginx.conf:/etc/nginx/nginx.conf

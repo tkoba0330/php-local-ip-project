@@ -1,27 +1,18 @@
 <?php
-function getLocalIPAddress() {
-    $localIP = '';
-    
-    // Try to get IP from various sources
-    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-        $localIP = $_SERVER['HTTP_CLIENT_IP'];
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $localIP = $_SERVER['HTTP_X_FORWARDED_FOR'];
-    } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
-        $localIP = $_SERVER['REMOTE_ADDR'];
-    }
-    
-    // If we still don't have an IP, try to get the server's local IP
-    if (empty($localIP) || $localIP === '::1' || $localIP === '127.0.0.1') {
-        $localIP = gethostbyname(trim(`hostname`));
-    }
-    
-    return $localIP;
-}
-
-$serverIP = getLocalIPAddress();
+// Lightweight health check page
+$serverIP = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 $serverName = gethostname();
 $currentTime = date('Y-m-d H:i:s');
+$phpVersion = phpversion();
+$sapi = php_sapi_name();
+
+// Detect server type for container identification
+$serverType = 'Unknown';
+if ($sapi === 'apache2handler') {
+    $serverType = 'Apache + PHP';
+} elseif ($sapi === 'fpm-fcgi') {
+    $serverType = 'Nginx + PHP-FPM';
+}
 ?>
 
 <!DOCTYPE html>
@@ -29,135 +20,90 @@ $currentTime = date('Y-m-d H:i:s');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ローカルIP表示 - PHPランディングページ</title>
+    <title>PHP Server Health Check</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
+        .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
         }
-        
-        .container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            text-align: center;
-            max-width: 600px;
-            width: 90%;
-        }
-        
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .ip-display {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 25px;
-            margin: 20px 0;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .ip-label {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            opacity: 0.9;
-        }
-        
-        .ip-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            font-family: 'Courier New', monospace;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 30px;
-        }
-        
-        .info-card {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .info-title {
-            font-size: 1.1em;
-            margin-bottom: 8px;
-            opacity: 0.8;
-        }
-        
-        .info-value {
-            font-size: 1.3em;
-            font-weight: bold;
-        }
-        
-        .footer {
-            margin-top: 30px;
-            opacity: 0.7;
-            font-size: 0.9em;
-        }
-        
-        @media (max-width: 600px) {
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            h1 {
-                font-size: 2em;
-            }
-            
-            .ip-value {
-                font-size: 1.5em;
-            }
+        .glass-effect {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🌐 ローカルIP情報</h1>
-        
-        <div class="ip-display">
-            <div class="ip-label">あなたのローカルIPアドレス</div>
-            <div class="ip-value"><?php echo htmlspecialchars($serverIP); ?></div>
-        </div>
-        
-        <div class="info-grid">
-            <div class="info-card">
-                <div class="info-title">サーバー名</div>
-                <div class="info-value"><?php echo htmlspecialchars($serverName); ?></div>
+<body class="min-h-screen gradient-bg flex items-center justify-center">
+    <div class="max-w-md w-full mx-4">
+        <!-- Health Check Status -->
+        <div class="glass-effect bg-white/20 backdrop-blur-md rounded-3xl p-8 border border-white/30 shadow-2xl text-center">
+            <!-- Status Icon -->
+            <div class="mb-6">
+                <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">✅ Server Online</h1>
+                <p class="text-blue-100 text-sm">Health check passed</p>
             </div>
-            
-            <div class="info-card">
-                <div class="info-title">現在時刻</div>
-                <div class="info-value"><?php echo $currentTime; ?></div>
+
+            <!-- Quick Info -->
+            <div class="space-y-3 mb-6">
+                <div class="bg-white/10 rounded-lg p-3 border border-white/20">
+                    <p class="text-xs text-blue-200 uppercase tracking-wide">Server Type</p>
+                    <p class="text-white font-semibold"><?php echo htmlspecialchars($serverType); ?></p>
+                </div>
+                
+                <div class="bg-white/10 rounded-lg p-3 border border-white/20">
+                    <p class="text-xs text-blue-200 uppercase tracking-wide">PHP Version</p>
+                    <p class="text-white font-semibold"><?php echo htmlspecialchars($phpVersion); ?></p>
+                </div>
+                
+                <div class="bg-white/10 rounded-lg p-3 border border-white/20">
+                    <p class="text-xs text-blue-200 uppercase tracking-wide">Container</p>
+                    <p class="text-white font-semibold"><?php echo htmlspecialchars($serverName); ?></p>
+                </div>
+                
+                <div class="bg-white/10 rounded-lg p-3 border border-white/20">
+                    <p class="text-xs text-blue-200 uppercase tracking-wide">Current Time</p>
+                    <p class="text-white font-semibold"><?php echo $currentTime; ?></p>
+                </div>
+            </div>
+
+            <!-- Dashboard Link -->
+            <div class="space-y-3">
+                <a href="dashboard.php" class="block w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                    📊 Full Dashboard
+                </a>
+                
+                <p class="text-xs text-blue-200">
+                    View comprehensive server information and download CSV
+                </p>
             </div>
         </div>
-        
-        <div class="footer">
-            <p>PHP <?php echo phpversion(); ?> で動作中</p>
-            <p>最新のPHPバージョンを使用したプロジェクトです</p>
+
+        <!-- Footer -->
+        <div class="text-center mt-6">
+            <p class="text-white/70 text-sm">
+                🚀 Lightweight Health Check Page
+            </p>
         </div>
     </div>
+
+    <!-- Entrance Animation -->
+    <script>
+        // Add entrance animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.glass-effect');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                container.style.transition = 'all 0.6s ease-out';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
 </body>
 </html>

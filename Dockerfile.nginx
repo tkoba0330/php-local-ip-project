@@ -1,0 +1,52 @@
+# Nginx + PHP-FPM用のDockerfile
+FROM nginx:alpine
+
+# PHP-FPMをインストール
+RUN apk add --no-cache \
+    php83 \
+    php83-fpm \
+    php83-session \
+    php83-json \
+    php83-openssl \
+    php83-curl \
+    php83-zlib \
+    php83-xml \
+    php83-phar \
+    php83-intl \
+    php83-dom \
+    php83-xmlreader \
+    php83-ctype \
+    php83-mbstring \
+    php83-gd \
+    php83-mysqli \
+    php83-pdo_mysql \
+    php83-zip \
+    php83-fileinfo
+
+# Nginxの設定ファイルをコピー
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# PHPファイルをコピー
+COPY index.php /var/www/html/
+COPY dashboard.php /var/www/html/
+
+# PHP-FPMの設定
+RUN sed -i 's/listen = 127.0.0.1:9000/listen = 9000/' /etc/php83/php-fpm.d/www.conf
+RUN sed -i 's/;listen.owner = nobody/listen.owner = nginx/' /etc/php83/php-fpm.d/www.conf
+RUN sed -i 's/;listen.group = nobody/listen.group = nginx/' /etc/php83/php-fpm.d/www.conf
+RUN sed -i 's/user = nobody/user = nginx/' /etc/php83/php-fpm.d/www.conf
+RUN sed -i 's/group = nobody/group = nginx/' /etc/php83/php-fpm.d/www.conf
+
+# 権限設定
+RUN chown -R nginx:nginx /var/www/html
+RUN chmod -R 755 /var/www/html
+
+# 起動スクリプト作成
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'php-fpm83 -D' >> /start.sh && \
+    echo 'nginx -g "daemon off;"' >> /start.sh && \
+    chmod +x /start.sh
+
+EXPOSE 80
+
+CMD ["/start.sh"]
